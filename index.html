@@ -275,7 +275,6 @@
             <p>نظام متكامل لإدارة بيانات الفروع</p>
         </div>
 
-        <!-- قسم تحميل البيانات -->
         <div class="loading-section" id="loadingSection">
             <h2>🔄 جاري تحميل البيانات...</h2>
             <div class="spinner"></div>
@@ -285,7 +284,6 @@
             <div class="message error" id="loadingError" style="display: none;"></div>
         </div>
 
-        <!-- قسم تسجيل الدخول -->
         <div class="login-section" id="loginSection" style="display: none;">
             <div class="login-form">
                 <h2>🔐 تسجيل الدخول</h2>
@@ -308,7 +306,6 @@
             </div>
         </div>
 
-        <!-- قسم لوحة التحكم -->
         <div class="dashboard" id="dashboard">
             <div class="dashboard-header">
                 <h2 id="dashboardTitle">لوحة تحكم الفرع</h2>
@@ -430,7 +427,7 @@
                             const workbook = XLSX.read(data, { type: 'array' });
                             const firstSheetName = workbook.SheetNames[0];
                             const worksheet = workbook.Sheets[firstSheetName];
-                            passwordsData = XLSX.utils.sheet_to_json(worksheet);
+                            passwordsData = XLSX.utils.sheet_to_json(worksheet, { raw: true }); // إضافة raw: true للحصول على الأرقام التسلسلية للتواريخ
                             console.log('✅ تم تحميل passwords.xlsx من:', path);
                             passFileFound = true;
                             break;
@@ -441,7 +438,7 @@
                 }
 
                 if (!passFileFound) {
-                    throw new Error('لم يتم العثور على ملف passwords.xlsx في أي من المسارات المتاحة');
+                    throw new Error('لم يتم العثور على ملف pass.xlsx في أي من المسارات المتاحة');
                 }
 
                 showMessage(loadingMessage, 'جاري تحميل ملف branches.xlsx...');
@@ -467,7 +464,7 @@
                             const workbook = XLSX.read(data, { type: 'array' });
                             const firstSheetName = workbook.SheetNames[0];
                             const worksheet = workbook.Sheets[firstSheetName];
-                            branchesData = XLSX.utils.sheet_to_json(worksheet);
+                            branchesData = XLSX.utils.sheet_to_json(worksheet, { raw: true }); // إضافة raw: true للحصول على الأرقام التسلسلية للتواريخ
                             console.log('✅ تم تحميل branches.xlsx من:', path);
                             branchesFileFound = true;
                             break;
@@ -478,10 +475,10 @@
                 }
 
                 if (!branchesFileFound) {
-                    throw new Error('لم يتم العثور على ملف branches.xlsx في أي من المسارات المتاحة');
+                    throw new Error('لم يتم العثور على ملف new-uplode.xlsx أو branches.xlsx في أي من المسارات المتاحة');
                 }
 
-                // تنظيف البيانات
+                // تنظيف البيانات ومعالجة التواريخ
                 cleanAndProcessData();
                 
                 // إخفاء قسم التحميل وإظهار قسم تسجيل الدخول
@@ -505,7 +502,34 @@
 
         // تنظيف ومعالجة البيانات
         function cleanAndProcessData() {
-            // تنظيف أسماء الأعمدة
+            // دالة مساعدة لتحويل رقم تسلسلي (من Excel) إلى تاريخ بصيغة YYYY-MM-DD
+            function excelSerialDateToISO(serial) {
+                if (typeof serial === 'number' && serial > 1) { // serial > 1 لتجنب 0 و 1 (تواريخ غير صالحة)
+                    try {
+                        // استخدام دالة المكتبة لتحويل الرقم التسلسلي إلى كائن تاريخ
+                        const date = new Date(XLSX.SSF.parse_date_code(serial).t);
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        return `${year}-${month}-${day}`;
+                    } catch (e) {
+                        // في حال فشل المكتبة، العودة للطريقة اليدوية
+                        console.error("فشل تحويل التاريخ التسلسلي باستخدام دالة المكتبة:", e);
+                        const baseDate = new Date(Date.UTC(1899, 11, 30));
+                        baseDate.setDate(baseDate.getDate() + serial);
+                        const year = baseDate.getFullYear();
+                        const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(baseDate.getDate()).padStart(2, '0');
+                        return `${year}-${month}-${day}`;
+                    }
+                }
+                return null;
+            }
+
+            // أسماء الأعمدة المحتملة للتواريخ (للتأكد من معالجة كل حقول التاريخ)
+            const dateKeys = ['TRANS_DATE', 'تاريخ القرض', 'DATE', 'التاريخ', 'تاريخ'];
+
+            // معالجة بيانات كلمات المرور
             if (passwordsData.length > 0) {
                 const cleanPasswords = passwordsData.map(item => {
                     const cleanItem = {};
@@ -513,7 +537,15 @@
                         const cleanKey = key.trim();
                         let value = item[key];
                         
-                        // تنظيف القيم
+                        // معالجة الأرقام التسلسلية للتواريخ
+                        if (dateKeys.some(dk => cleanKey.toUpperCase().includes(dk.toUpperCase())) && typeof value === 'number') {
+                            const isoDate = excelSerialDateToISO(value);
+                            if (isoDate) {
+                                value = isoDate;
+                            }
+                        }
+                        
+                        // تنظيف القيم الأخرى
                         if (value instanceof Date) {
                             value = value.toISOString().split('T')[0];
                         } else if (typeof value === 'string') {
@@ -527,6 +559,7 @@
                 passwordsData = cleanPasswords;
             }
 
+            // معالجة بيانات الفروع (البيانات الرئيسية)
             if (branchesData.length > 0) {
                 const cleanBranches = branchesData.map(item => {
                     const cleanItem = {};
@@ -534,15 +567,28 @@
                         const cleanKey = key.trim();
                         let value = item[key];
                         
-                        // تنظيف القيم وتوحيد التواريخ
+                        // 1. معالجة الأرقام التسلسلية للتواريخ (الحل للمشكلة)
+                        if (dateKeys.some(dk => cleanKey.toUpperCase().includes(dk.toUpperCase())) && typeof value === 'number') {
+                            const isoDate = excelSerialDateToISO(value);
+                            if (isoDate) {
+                                value = isoDate;
+                            }
+                        }
+                        
+                        // 2. معالجة التواريخ كـ Date Object 
                         if (value instanceof Date) {
                             value = value.toISOString().split('T')[0];
-                        } else if (typeof value === 'string') {
+                        } 
+                        // 3. معالجة النصوص
+                        else if (typeof value === 'string') {
                             value = value.trim();
-                            // محاولة تحويل التواريخ النصية
-                            if (value.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-                                const parts = value.split('/');
-                                value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                            // محاولة تحويل التواريخ النصية (DD/MM/YYYY) إلى YYYY-MM-DD
+                            if (value.match(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/)) {
+                                const parts = value.split(/[\/\-]/);
+                                // نفترض النمط العربي/الأوروبي: DD/MM/YYYY
+                                if (parts[0].length === 2 && parts[2].length === 4) {
+                                    value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                                }
                             }
                         }
                         
@@ -553,7 +599,7 @@
                 branchesData = cleanBranches;
             }
 
-            console.log('🧹 البيانات بعد التنظيف:', {
+            console.log('🧹 البيانات بعد التنظيف ومعالجة التواريخ:', {
                 passwords: passwordsData,
                 branches: branchesData
             });
@@ -759,8 +805,48 @@
             const globalSearch = document.getElementById('globalSearch').value.toLowerCase();
             const columnSelect = document.getElementById('columnSelect').value;
             const columnSearch = document.getElementById('columnSearch').value.toLowerCase();
+            
+            // تطبيق فلاتر التاريخ قبل أي فلاتر نصية
+            let dataAfterDateFilter = currentBranchData;
+            const fromDate = document.getElementById('transDateFrom').value;
+            const toDate = document.getElementById('transDateTo').value;
 
-            filteredData = currentBranchData.filter(item => {
+            if (fromDate || toDate) {
+                 dataAfterDateFilter = currentBranchData.filter(item => {
+                    let transDate = null;
+                    
+                    // البحث عن حقل التاريخ
+                    for (let key in item) {
+                        const cleanKey = key.toUpperCase();
+                        // نستخدم نفس مصفوفة المفاتيح المستخدمة في cleanAndProcessData لضمان التناسق
+                        if (['TRANS_DATE', 'تاريخ القرض', 'DATE', 'التاريخ', 'تاريخ'].some(dk => cleanKey.includes(dk.toUpperCase()))) {
+                            transDate = item[key];
+                            break;
+                        }
+                    }
+
+                    if (!transDate) return true;
+
+                    // تحويل التاريخ لصيغة YYYY-MM-DD للمقارنة (وهي الصيغة المخزنة بعد cleanAndProcessData)
+                    const itemDate = transDate;
+
+                    let fromCondition = true;
+                    let toCondition = true;
+
+                    if (fromDate) {
+                        fromCondition = itemDate >= fromDate;
+                    }
+
+                    if (toDate) {
+                        toCondition = itemDate <= toDate;
+                    }
+
+                    return fromCondition && toCondition;
+                });
+            }
+
+            // تطبيق فلاتر البحث النصي على البيانات بعد فلترة التاريخ
+            filteredData = dataAfterDateFilter.filter(item => {
                 // البحث العام
                 if (globalSearch) {
                     const found = Object.values(item).some(value => 
@@ -781,72 +867,27 @@
             renderTable();
         }
 
-        // تطبيق فلتر التاريخ
+        // تطبيق فلتر التاريخ (تم دمج منطق الفلترة في applyFilters)
         function applyDateFilter() {
-            const fromDate = document.getElementById('transDateFrom').value;
-            const toDate = document.getElementById('transDateTo').value;
-
-            console.log('📅 تطبيق فلتر التاريخ:', { fromDate, toDate });
-
-            if (!fromDate && !toDate) {
-                applyFilters();
-                return;
-            }
-
-            filteredData = currentBranchData.filter(item => {
-                let transDate = null;
-                
-                // البحث عن حقل التاريخ
-                for (let key in item) {
-                    const cleanKey = key.toUpperCase();
-                    if (cleanKey.includes('DATE') || cleanKey.includes('التاريخ') || cleanKey.includes('تاريخ')) {
-                        transDate = item[key];
-                        break;
-                    }
-                }
-
-                if (!transDate) return true;
-
-                // تحويل التاريخ لصيغة YYYY-MM-DD للمقارنة
-                const itemDate = formatDateForComparison(transDate);
-                if (!itemDate) return true;
-
-                let fromCondition = true;
-                let toCondition = true;
-
-                if (fromDate) {
-                    fromCondition = itemDate >= fromDate;
-                }
-
-                if (toDate) {
-                    toCondition = itemDate <= toDate;
-                }
-
-                return fromCondition && toCondition;
-            });
-
-            renderTable();
+            applyFilters();
         }
 
-        // تحويل التاريخ لصيغة قابلة للمقارنة
+        // تحويل التاريخ لصيغة قابلة للمقارنة (هذه الدالة لم تعد ضرورية بشكل مباشر بعد تعديل cleanAndProcessData، لكن نتركها احتياطياً)
         function formatDateForComparison(dateString) {
             if (!dateString) return '';
             
-            // إذا التاريخ بالفعل بصيغة YYYY-MM-DD
+            // بعد المعالجة في cleanAndProcessData، يجب أن تكون التواريخ YYYY-MM-DD
             if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
                 return dateString;
             }
             
-            // إذا التاريخ بصيغة أخرى
+            // معالجة احتياطية للتواريخ النصية
             if (typeof dateString === 'string') {
-                // تحويل من DD/MM/YYYY أو DD-MM-YYYY إلى YYYY-MM-DD
                 const parts = dateString.split(/[/\-.]/);
                 if (parts.length === 3) {
-                    // إذا اليوم أول جزء (نمط عربي/أوروبي)
                     if (parts[0].length === 2 && parts[2].length === 4) {
                         return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
                     }
-                    // إذا السنة أول جزء (نمط ISO)
                     if (parts[0].length === 4 && parts[2].length === 2) {
                         return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
                     }
@@ -883,6 +924,7 @@
                 for (let key in item) {
                     const cleanKey = key.toUpperCase();
                     if (cleanKey.includes('AMOUNT') || cleanKey.includes('المبلغ') || cleanKey.includes('مبلغ')) {
+                        // يجب التأكد من أن القيمة رقمية قبل الجمع
                         const value = parseFloat(item[key]) || 0;
                         totalAmount += value;
                         break;
