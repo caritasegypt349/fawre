@@ -427,7 +427,8 @@
                             const workbook = XLSX.read(data, { type: 'array' });
                             const firstSheetName = workbook.SheetNames[0];
                             const worksheet = workbook.Sheets[firstSheetName];
-                            passwordsData = XLSX.utils.sheet_to_json(worksheet, { raw: true }); // إضافة raw: true للحصول على الأرقام التسلسلية للتواريخ
+                            // نستخدم raw: true لقراءة الأرقام التسلسلية
+                            passwordsData = XLSX.utils.sheet_to_json(worksheet, { raw: true }); 
                             console.log('✅ تم تحميل passwords.xlsx من:', path);
                             passFileFound = true;
                             break;
@@ -464,7 +465,8 @@
                             const workbook = XLSX.read(data, { type: 'array' });
                             const firstSheetName = workbook.SheetNames[0];
                             const worksheet = workbook.Sheets[firstSheetName];
-                            branchesData = XLSX.utils.sheet_to_json(worksheet, { raw: true }); // إضافة raw: true للحصول على الأرقام التسلسلية للتواريخ
+                            // نستخدم raw: true لقراءة الأرقام التسلسلية
+                            branchesData = XLSX.utils.sheet_to_json(worksheet, { raw: true }); 
                             console.log('✅ تم تحميل branches.xlsx من:', path);
                             branchesFileFound = true;
                             break;
@@ -504,35 +506,35 @@
         function cleanAndProcessData() {
             // دالة مساعدة لتحويل رقم تسلسلي (من Excel) إلى تاريخ بصيغة YYYY-MM-DD
             function excelSerialDateToISO(serial) {
-                if (typeof serial === 'number' && serial >= 1) { 
+                if (typeof serial === 'number' && serial > 1) { 
                     try {
-                        // **[التعديل لحل مشكلة NaN-NaN-NaN]**
-                        // استخدام الطريقة المباشرة للحساب للتحويل من نظام 1900 Epoch
+                        // **[التعديل النهائي لحل مشكلة NaN-NaN-NaN]**
+                        // استخدام دالة التنسيق الرسمية (SSF) من مكتبة xlsx لتحويل الرقم إلى نص تاريخ مباشرة.
+                        // هذه الطريقة تتفادى مشاكل المنطقة الزمنية و1900/1904.
+                        const isoDateString = XLSX.SSF.format('yyyy-mm-dd', serial);
                         
-                        // baseDate هو 1899-12-30 بالتوقيت العالمي الموحد (UTC)، وهو اليوم 0 في Excel.
-                        const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-                        // نقوم بجمع عدد الأيام (Serial) مضروبًا في عدد المللي ثانية في اليوم
-                        const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
-
-                        // التحقق من أن التاريخ صالح (Invalid Date) أو غير منطقي (مثل 1900)
-                        if (isNaN(date.getTime()) || date.getFullYear() < 1980) {
-                            // معالجة خاصة للقيمة 60 (1900-02-29)، وهي حالة تاريخية معروفة في نظام 1900
-                            if (serial === 60) {
-                                return "1900-02-29"; 
-                            }
-                            return null;
+                        // التحقق من أن القيمة الناتجة هي تاريخ حقيقي بصيغة YYYY-MM-DD
+                        if (isoDateString && /^\d{4}-\d{2}-\d{2}$/.test(isoDateString)) {
+                            return isoDateString;
                         }
-
-                        // التنسيق بصيغة YYYY-MM-DD (باستخدام UTC methods لتجنب تأثير التوقيت المحلي)
-                        const year = date.getUTCFullYear();
-                        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-                        const day = String(date.getUTCDate()).padStart(2, '0');
-
-                        return `${year}-${month}-${day}`;
+                        
+                        // في حالة فشل التحويل عبر SSF (نادر)
+                        return null;
 
                     } catch (e) {
-                        console.error("خطأ في تحويل التاريخ التسلسلي:", e);
-                        return null; 
+                        console.error("خطأ في تحويل التاريخ التسلسلي باستخدام SSF:", e);
+                        // fallback to a manual reliable method just in case
+                        try {
+                            const date = new Date(Date.UTC(1899, 11, 30) + serial * 86400000); // 86400000 = ms in a day
+                            if (isNaN(date.getTime()) || date.getFullYear() < 1980) return null;
+                            
+                            const year = date.getUTCFullYear();
+                            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                            const day = String(date.getUTCDate()).padStart(2, '0');
+                            return `${year}-${month}-${day}`;
+                        } catch(e2) {
+                            return null;
+                        }
                     }
                 }
                 return null;
