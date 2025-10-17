@@ -432,14 +432,30 @@
 
         function populateBranchSelect() {
             const select = document.getElementById('branchSelect');
-            const branches = [...new Set(passwordsData.map(p => Object.values(p)[0]))];
             
-            branches.forEach(branch => {
+            // الحصول على أسماء الفروع من بيانات الباسوردات
+            const branchNames = passwordsData.map(p => {
+                // تنظيف المفاتيح من المسافات الزيادة
+                let branchName = null;
+                for (let key in p) {
+                    if (key.trim() === 'BRANCH_NAME') {
+                        branchName = p[key];
+                        break;
+                    }
+                }
+                return branchName;
+            }).filter(b => b);
+            
+            const uniqueBranches = [...new Set(branchNames)];
+            
+            uniqueBranches.forEach(branch => {
                 const option = document.createElement('option');
                 option.value = branch;
                 option.textContent = branch;
                 select.appendChild(option);
             });
+            
+            console.log('✅ تم تحميل الفروع:', uniqueBranches);
         }
 
         function login() {
@@ -458,8 +474,30 @@
             }
 
             // البحث عن الفرع والتحقق من الباسورد
-            const branchInfo = passwordsData.find(b => Object.values(b)[0] === selectedBranch);
-            const branchPassword = branchInfo ? Object.values(branchInfo)[1] : null;
+            const branchInfo = passwordsData.find(b => {
+                // تنظيف المفاتيح من المسافات الزيادة
+                for (let key in b) {
+                    if (key.trim() === 'BRANCH_NAME' && b[key] === selectedBranch) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            
+            // الحصول على الباسورد بنفس الطريقة
+            let branchPassword = null;
+            if (branchInfo) {
+                for (let key in branchInfo) {
+                    if (key.trim() === 'PASSWORD') {
+                        branchPassword = branchInfo[key];
+                        break;
+                    }
+                }
+            }
+            
+            console.log('🔍 بيانات الفرع:', branchInfo);
+            console.log('🔐 الباسورد المخزن:', branchPassword);
+            console.log('📝 الباسورد المدخل:', enteredPassword);
             
             if (branchInfo && branchPassword == enteredPassword) {
                 errorMessage.style.display = 'none';
@@ -482,8 +520,25 @@
             document.getElementById('dashboard').style.display = 'block';
             
             // تصفية البيانات حسب الفرع
-            const branchColumn = Object.keys(branchesData[0])[0];
-            currentBranchData = branchesData.filter(row => row[branchColumn] === currentBranch);
+            // نبحث عن العمود الذي يحتوي على اسم الفرع
+            currentBranchData = branchesData.filter(row => {
+                for (let key in row) {
+                    const cleanKey = key.trim();
+                    // البحث عن أي عمود يحتوي على اسم الفرع
+                    if ((cleanKey === 'الفرع الحالى للعميل' || 
+                         cleanKey === 'الفرع' || 
+                         cleanKey === 'BRANCH' || 
+                         cleanKey === 'branch' ||
+                         cleanKey.includes('فرع') ||
+                         cleanKey.includes('BRANCH')) && 
+                        row[key] === currentBranch) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            
+            console.log('📊 بيانات الفرع الحالي:', currentBranchData.length, 'سجل');
             
             filteredData = [...currentBranchData];
             
