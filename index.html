@@ -504,23 +504,35 @@
         function cleanAndProcessData() {
             // دالة مساعدة لتحويل رقم تسلسلي (من Excel) إلى تاريخ بصيغة YYYY-MM-DD
             function excelSerialDateToISO(serial) {
-                if (typeof serial === 'number' && serial > 1) { // serial > 1 لتجنب 0 و 1 (تواريخ غير صالحة)
+                if (typeof serial === 'number' && serial >= 1) { 
                     try {
-                        // استخدام دالة المكتبة لتحويل الرقم التسلسلي إلى كائن تاريخ
-                        const date = new Date(XLSX.SSF.parse_date_code(serial).t);
-                        const year = date.getFullYear();
-                        const month = String(date.getMonth() + 1).padStart(2, '0');
-                        const day = String(date.getDate()).padStart(2, '0');
+                        // **[التعديل لحل مشكلة NaN-NaN-NaN]**
+                        // استخدام الطريقة المباشرة للحساب للتحويل من نظام 1900 Epoch
+                        
+                        // baseDate هو 1899-12-30 بالتوقيت العالمي الموحد (UTC)، وهو اليوم 0 في Excel.
+                        const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                        // نقوم بجمع عدد الأيام (Serial) مضروبًا في عدد المللي ثانية في اليوم
+                        const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
+
+                        // التحقق من أن التاريخ صالح (Invalid Date) أو غير منطقي (مثل 1900)
+                        if (isNaN(date.getTime()) || date.getFullYear() < 1980) {
+                            // معالجة خاصة للقيمة 60 (1900-02-29)، وهي حالة تاريخية معروفة في نظام 1900
+                            if (serial === 60) {
+                                return "1900-02-29"; 
+                            }
+                            return null;
+                        }
+
+                        // التنسيق بصيغة YYYY-MM-DD (باستخدام UTC methods لتجنب تأثير التوقيت المحلي)
+                        const year = date.getUTCFullYear();
+                        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                        const day = String(date.getUTCDate()).padStart(2, '0');
+
                         return `${year}-${month}-${day}`;
+
                     } catch (e) {
-                        // في حال فشل المكتبة، العودة للطريقة اليدوية
-                        console.error("فشل تحويل التاريخ التسلسلي باستخدام دالة المكتبة:", e);
-                        const baseDate = new Date(Date.UTC(1899, 11, 30));
-                        baseDate.setDate(baseDate.getDate() + serial);
-                        const year = baseDate.getFullYear();
-                        const month = String(baseDate.getMonth() + 1).padStart(2, '0');
-                        const day = String(baseDate.getDate()).padStart(2, '0');
-                        return `${year}-${month}-${day}`;
+                        console.error("خطأ في تحويل التاريخ التسلسلي:", e);
+                        return null; 
                     }
                 }
                 return null;
@@ -827,7 +839,7 @@
 
                     if (!transDate) return true;
 
-                    // تحويل التاريخ لصيغة YYYY-MM-DD للمقارنة (وهي الصيغة المخزنة بعد cleanAndProcessData)
+                    // التاريخ المخزن بعد cleanAndProcessData هو YYYY-MM-DD
                     const itemDate = transDate;
 
                     let fromCondition = true;
