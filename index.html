@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نظام إدارة الفروع</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -44,24 +45,14 @@
             opacity: 0.9;
         }
 
-        .login-section, .dashboard {
+        .loading-section, .login-section, .dashboard {
             padding: 30px;
         }
 
-        .login-section {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 400px;
-        }
-
-        .login-form {
-            width: 100%;
-            max-width: 400px;
+        .loading-section {
             background: #f8f9fa;
-            padding: 30px;
-            border-radius: 10px;
-            border: 1px solid #e0e0e0;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: center;
         }
 
         .form-group {
@@ -92,8 +83,7 @@
         }
 
         .btn {
-            width: 100%;
-            padding: 12px;
+            padding: 12px 24px;
             background: #667eea;
             color: white;
             border: none;
@@ -108,23 +98,45 @@
             background: #764ba2;
         }
 
-        .error {
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .message {
             margin-top: 15px;
             padding: 12px;
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
             border-radius: 5px;
             display: none;
         }
 
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
         .loading {
-            margin-top: 15px;
-            padding: 12px;
             background: #cce5ff;
             color: #004085;
             border: 1px solid #b8daff;
-            border-radius: 5px;
             text-align: center;
         }
 
@@ -143,20 +155,6 @@
 
         .dashboard-header h2 {
             color: #333;
-        }
-
-        .logout-btn {
-            padding: 10px 20px;
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .logout-btn:hover {
-            background: #c82333;
         }
 
         .stats {
@@ -213,22 +211,12 @@
             color: #333;
         }
 
-        .filter-group input,
-        .filter-group select {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 0.95em;
-        }
-
-        .reset-btn {
-            width: 100%;
-        }
-
         .table-container {
             overflow-x: auto;
             border: 1px solid #e0e0e0;
             border-radius: 10px;
+            max-height: 600px;
+            overflow-y: auto;
         }
 
         table {
@@ -239,6 +227,8 @@
 
         thead {
             background: #f8f9fa;
+            position: sticky;
+            top: 0;
         }
 
         th {
@@ -261,54 +251,68 @@
         tbody tr:last-child td {
             border-bottom: none;
         }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🏢 نظام إدارة الفروع</h1>
-            <p>اختر الفرع وأدخل كلمة المرور للوصول إلى البيانات</p>
+            <p>نظام متكامل لإدارة بيانات الفروع</p>
         </div>
 
-        <div class="login-section" id="loginSection">
+        <!-- قسم تحميل البيانات -->
+        <div class="loading-section" id="loadingSection">
+            <h2>🔄 جاري تحميل البيانات...</h2>
+            <div class="spinner"></div>
+            <div class="message loading" id="loadingMessage">
+                جاري تحميل ملفات Excel وتحويلها...
+            </div>
+            <div class="message error" id="loadingError" style="display: none;"></div>
+        </div>
+
+        <!-- قسم تسجيل الدخول -->
+        <div class="login-section" id="loginSection" style="display: none;">
             <div class="login-form">
+                <h2>🔐 تسجيل الدخول</h2>
                 <div class="form-group">
                     <label for="branchSelect">اختر الفرع:</label>
                     <select id="branchSelect">
                         <option value="">-- اختر الفرع --</option>
                     </select>
                 </div>
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label>عمود محدد:</label>
-                        <select id="columnSelect">
-                            <option value="">اختر عمود للبحث</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>قيمة البحث:</label>
-                        <input type="text" id="columnSearch" placeholder="قيمة البحث..." disabled>
-                    </div>
-                </div>
-
                 <div class="form-group">
                     <label for="passwordInput">كلمة المرور:</label>
                     <input type="password" id="passwordInput" placeholder="أدخل كلمة المرور">
                 </div>
-
                 <button class="btn" onclick="login()">دخول</button>
                 
-                <div class="error" id="errorMessage"></div>
-                <div class="loading" id="loadingMessage" style="display: none;">
-                    جاري تحميل البيانات...
+                <div class="message error" id="errorMessage"></div>
+                <div class="message loading" id="loginLoading" style="display: none;">
+                    جاري التحقق من البيانات...
                 </div>
             </div>
         </div>
 
+        <!-- قسم لوحة التحكم -->
         <div class="dashboard" id="dashboard">
             <div class="dashboard-header">
                 <h2 id="dashboardTitle">لوحة تحكم الفرع</h2>
-                <button class="logout-btn" onclick="logout()">تسجيل الخروج</button>
+                <button class="btn btn-danger" onclick="logout()">تسجيل الخروج</button>
             </div>
 
             <div class="stats">
@@ -320,56 +324,61 @@
                     <div class="stat-number" id="filteredRecords">0</div>
                     <div class="stat-label">السجلات المعروضة</div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalAmount">0</div>
+                    <div class="stat-label">مجموع المبالغ</div>
+                </div>
             </div>
 
             <div class="filters">
                 <div class="filter-row">
                     <div class="filter-group">
                         <label>بحث عام:</label>
-                        <input type="text" id="globalSearch" placeholder="ابحث في جميع الحقول...">
+                        <input type="text" id="globalSearch" placeholder="ابحث في جميع الحقول..." oninput="applyFilters()">
+                    </div>
+                    <div class="filter-group">
+                        <label>عمود محدد:</label>
+                        <select id="columnSelect" onchange="toggleColumnSearch()">
+                            <option value="">اختر عمود للبحث</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>قيمة البحث:</label>
+                        <input type="text" id="columnSearch" placeholder="قيمة البحث..." oninput="applyFilters()" disabled>
                     </div>
                 </div>
                 <div class="filter-row">
                     <div class="filter-group">
-                        <label>🗓️ فلتر التاريخ (TRANS_DATE):</label>
-                        <input type="date" id="transDateFrom" placeholder="من تاريخ">
+                        <label>من تاريخ:</label>
+                        <input type="date" id="transDateFrom">
+                    </div>
+                    <div class="filter-group">
+                        <label>إلى تاريخ:</label>
+                        <input type="date" id="transDateTo">
                     </div>
                     <div class="filter-group">
                         <label>&nbsp;</label>
-                        <input type="date" id="transDateTo" placeholder="إلى تاريخ">
+                        <button class="btn btn-success" onclick="applyDateFilter()">تطبيق التاريخ</button>
                     </div>
                     <div class="filter-group">
                         <label>&nbsp;</label>
-                        <button class="btn" onclick="applyDateFilter()" style="background: #28a745;">🔍 تطبيق</button>
-                    </div>
-                    <div class="filter-group">
-                        <label>&nbsp;</label>
-                        <button class="btn" onclick="resetDateFilter()" style="background: #6c757d;">🔄 مسح التاريخ</button>
+                        <button class="btn" onclick="resetDateFilter()">مسح التاريخ</button>
                     </div>
                 </div>
                 <div class="filter-row">
                     <div class="filter-group">
-                        <button class="btn reset-btn" onclick="resetFilters()">إعادة تعيين</button>
+                        <button class="btn" onclick="resetFilters()">إعادة تعيين جميع الفلاتر</button>
                     </div>
                     <div class="filter-group">
-                        <label>&nbsp;</label>
-                        <button class="btn" onclick="downloadExcel()" style="background: #007bff;">📥 تنزيل Excel</button>
+                        <button class="btn btn-success" onclick="downloadExcel()">📥 تنزيل Excel</button>
                     </div>
-                </div>
-            </div>
-
-            <div class="stats">
-                <div class="stat-card">
-                    <div class="stat-number" id="totalAmount">0</div>
-                    <div class="stat-label">مجموع المبالغ المدفوعة</div>
                 </div>
             </div>
 
             <div class="table-container">
                 <table id="dataTable">
                     <thead id="tableHeader">
-                        <tr>
-                        </tr>
+                        <tr></tr>
                     </thead>
                     <tbody id="tableBody">
                     </tbody>
@@ -378,201 +387,295 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
+        // المتغيرات العامة
         let passwordsData = [];
         let branchesData = [];
         let currentBranchData = [];
         let filteredData = [];
         let currentBranch = '';
-        let dateFilterApplied = false;
 
-        // تحميل البيانات من JSON عند فتح الصفحة
-        window.addEventListener('DOMContentLoaded', async function() {
-            await loadData();
-            populateBranchSelect();
+        // تحميل البيانات عند فتح الصفحة
+        window.addEventListener('DOMContentLoaded', function() {
+            loadExcelFiles();
         });
 
-        async function loadData() {
+        // تحميل ملفات Excel مباشرة من المسار
+        async function loadExcelFiles() {
+            const loadingMessage = document.getElementById('loadingMessage');
+            const loadingError = document.getElementById('loadingError');
+
             try {
-                console.log('🔄 جاري تحميل البيانات...');
+                showMessage(loadingMessage, 'جاري تحميل ملف passwords.xlsx...');
                 
-                // المسارات المحتملة
-                const paths = ['data/passwords.json', './data/passwords.json', '../data/passwords.json'];
-                let passwordsPath = null;
-                let branchesPath = null;
-                
-                // البحث عن المسار الصحيح للباسوردات
-                for (let path of paths) {
+                // المسارات المحتملة للملفات
+                const filePaths = [
+                    'pass.xlsx',
+                    './pass.xlsx',
+                    '../pass.xlsx',
+                    'data/pass.xlsx',
+                    './data/pass.xlsx',
+                    '../data/pass.xlsx'
+                ];
+
+                let passFileFound = false;
+                let branchesFileFound = false;
+
+                // محاولة تحميل ملف passwords
+                for (let path of filePaths) {
                     try {
                         const response = await fetch(path);
                         if (response.ok) {
-                            passwordsPath = path;
+                            const data = await response.arrayBuffer();
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const firstSheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[firstSheetName];
+                            passwordsData = XLSX.utils.sheet_to_json(worksheet);
+                            console.log('✅ تم تحميل passwords.xlsx من:', path);
+                            passFileFound = true;
                             break;
                         }
-                    } catch (e) {}
+                    } catch (e) {
+                        console.log('❌ لم يتم العثور على:', path);
+                    }
                 }
-                
-                // البحث عن المسار الصحيح للفروع
-                for (let path of paths) {
-                    const branchPath = path.replace('passwords.json', 'branches.json');
+
+                if (!passFileFound) {
+                    throw new Error('لم يتم العثور على ملف passwords.xlsx في أي من المسارات المتاحة');
+                }
+
+                showMessage(loadingMessage, 'جاري تحميل ملف branches.xlsx...');
+
+                // محاولة تحميل ملف branches
+                const branchesPaths = [
+                    'new-uplode.xlsx',
+                    './new-uplode.xlsx',
+                    '../new-uplode.xlsx',
+                    'data/new-uplode.xlsx',
+                    './data/new-uplode.xlsx',
+                    '../data/new-uplode.xlsx',
+                    'branches.xlsx',
+                    './branches.xlsx',
+                    '../branches.xlsx'
+                ];
+
+                for (let path of branchesPaths) {
                     try {
-                        const response = await fetch(branchPath);
+                        const response = await fetch(path);
                         if (response.ok) {
-                            branchesPath = branchPath;
+                            const data = await response.arrayBuffer();
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const firstSheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[firstSheetName];
+                            branchesData = XLSX.utils.sheet_to_json(worksheet);
+                            console.log('✅ تم تحميل branches.xlsx من:', path);
+                            branchesFileFound = true;
                             break;
                         }
-                    } catch (e) {}
+                    } catch (e) {
+                        console.log('❌ لم يتم العثور على:', path);
+                    }
                 }
-                
-                if (!passwordsPath) {
-                    console.error('❌ لم يتم العثور على passwords.json');
-                    throw new Error('لم يتم العثور على ملف passwords.json في المسارات: data/passwords.json');
+
+                if (!branchesFileFound) {
+                    throw new Error('لم يتم العثور على ملف branches.xlsx في أي من المسارات المتاحة');
                 }
+
+                // تنظيف البيانات
+                cleanAndProcessData();
                 
-                if (!branchesPath) {
-                    console.error('❌ لم يتم العثور على branches.json');
-                    throw new Error('لم يتم العثور على ملف branches.json في المسارات: data/branches.json');
-                }
+                // إخفاء قسم التحميل وإظهار قسم تسجيل الدخول
+                document.getElementById('loadingSection').style.display = 'none';
+                document.getElementById('loginSection').style.display = 'block';
                 
-                // تحميل البيانات
-                const passwordsResponse = await fetch(passwordsPath);
-                passwordsData = await passwordsResponse.json();
-                console.log('✅ تم تحميل بيانات الباسوردات:', passwordsData.length, 'من', passwordsPath);
+                // تعبئة قائمة الفروع
+                populateBranchSelect();
                 
-                const branchesResponse = await fetch(branchesPath);
-                branchesData = await branchesResponse.json();
-                console.log('✅ تم تحميل بيانات الفروع:', branchesData.length, 'من', branchesPath);
-                
+                showMessage(loadingMessage, '✅ تم تحميل البيانات بنجاح!');
+
             } catch (error) {
-                console.error('❌ خطأ:', error);
-                console.log('📁 تأكد من أن الهيكل كالتالي:');
-                console.log('   - index.html');
-                console.log('   - data/');
-                console.log('     - passwords.json');
-                console.log('     - branches.json');
-                alert('❌ خطأ في تحميل البيانات:\n' + error.message);
+                console.error('❌ خطأ في تحميل الملفات:', error);
+                showMessage(loadingError, `❌ خطأ في تحميل البيانات: ${error.message}<br>
+                تأكد من وجود الملفات في المشروع:<br>
+                - pass.xlsx (بيانات الفروع وكلمات المرور)<br>
+                - new-uplode.xlsx (البيانات الرئيسية)`);
+                hideMessage(loadingMessage);
             }
         }
 
+        // تنظيف ومعالجة البيانات
+        function cleanAndProcessData() {
+            // تنظيف أسماء الأعمدة
+            if (passwordsData.length > 0) {
+                const cleanPasswords = passwordsData.map(item => {
+                    const cleanItem = {};
+                    for (let key in item) {
+                        const cleanKey = key.trim();
+                        let value = item[key];
+                        
+                        // تنظيف القيم
+                        if (value instanceof Date) {
+                            value = value.toISOString().split('T')[0];
+                        } else if (typeof value === 'string') {
+                            value = value.trim();
+                        }
+                        
+                        cleanItem[cleanKey] = value;
+                    }
+                    return cleanItem;
+                });
+                passwordsData = cleanPasswords;
+            }
+
+            if (branchesData.length > 0) {
+                const cleanBranches = branchesData.map(item => {
+                    const cleanItem = {};
+                    for (let key in item) {
+                        const cleanKey = key.trim();
+                        let value = item[key];
+                        
+                        // تنظيف القيم وتوحيد التواريخ
+                        if (value instanceof Date) {
+                            value = value.toISOString().split('T')[0];
+                        } else if (typeof value === 'string') {
+                            value = value.trim();
+                            // محاولة تحويل التواريخ النصية
+                            if (value.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+                                const parts = value.split('/');
+                                value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                            }
+                        }
+                        
+                        cleanItem[cleanKey] = value;
+                    }
+                    return cleanItem;
+                });
+                branchesData = cleanBranches;
+            }
+
+            console.log('🧹 البيانات بعد التنظيف:', {
+                passwords: passwordsData,
+                branches: branchesData
+            });
+        }
+
+        // تعبئة قائمة الفروع
         function populateBranchSelect() {
             const select = document.getElementById('branchSelect');
-            
-            // الحصول على أسماء الفروع من بيانات الباسوردات
+            select.innerHTML = '<option value="">-- اختر الفرع --</option>';
+
             const branchNames = passwordsData.map(p => {
-                // تنظيف المفاتيح من المسافات الزيادة
-                let branchName = null;
                 for (let key in p) {
-                    if (key.trim() === 'BRANCH_NAME') {
-                        branchName = p[key];
-                        break;
+                    if (key === 'BRANCH_NAME' || key.includes('BRANCH') || key.includes('فرع')) {
+                        return p[key];
                     }
                 }
-                return branchName;
+                return null;
             }).filter(b => b);
-            
+
             const uniqueBranches = [...new Set(branchNames)];
-            
+
             uniqueBranches.forEach(branch => {
                 const option = document.createElement('option');
                 option.value = branch;
                 option.textContent = branch;
                 select.appendChild(option);
             });
-            
-            console.log('✅ تم تحميل الفروع:', uniqueBranches);
+
+            console.log('🏢 الفروع المتاحة:', uniqueBranches);
         }
 
+        // تسجيل الدخول
         function login() {
             const branchSelect = document.getElementById('branchSelect');
             const passwordInput = document.getElementById('passwordInput');
             const errorMessage = document.getElementById('errorMessage');
-            const loadingMessage = document.getElementById('loadingMessage');
+            const loginLoading = document.getElementById('loginLoading');
 
             const selectedBranch = branchSelect.value;
             const enteredPassword = passwordInput.value;
 
             if (!selectedBranch || !enteredPassword) {
-                errorMessage.textContent = '❌ يرجى اختيار الفرع وإدخال كلمة المرور';
-                errorMessage.style.display = 'block';
+                showMessage(errorMessage, '❌ يرجى اختيار الفرع وإدخال كلمة المرور');
                 return;
             }
 
+            showMessage(loginLoading, 'جاري التحقق من البيانات...');
+            hideMessage(errorMessage);
+
             // البحث عن الفرع والتحقق من الباسورد
             const branchInfo = passwordsData.find(b => {
-                // تنظيف المفاتيح من المسافات الزيادة
                 for (let key in b) {
-                    if (key.trim() === 'BRANCH_NAME' && b[key] === selectedBranch) {
+                    if ((key === 'BRANCH_NAME' || key.includes('BRANCH') || key.includes('فرع')) && 
+                        b[key] === selectedBranch) {
                         return true;
                     }
                 }
                 return false;
             });
-            
-            // الحصول على الباسورد بنفس الطريقة
+
+            if (!branchInfo) {
+                hideMessage(loginLoading);
+                showMessage(errorMessage, '❌ الفرع غير موجود');
+                return;
+            }
+
+            // الحصول على الباسورد
             let branchPassword = null;
-            if (branchInfo) {
-                for (let key in branchInfo) {
-                    if (key.trim() === 'PASSWORD') {
-                        branchPassword = branchInfo[key];
-                        break;
-                    }
+            for (let key in branchInfo) {
+                if (key === 'PASSWORD' || key.includes('PASSWORD') || key.includes('كلمة')) {
+                    branchPassword = branchInfo[key];
+                    break;
                 }
             }
-            
-            console.log('🔍 بيانات الفرع:', branchInfo);
-            console.log('🔐 الباسورد المخزن:', branchPassword);
-            console.log('📝 الباسورد المدخل:', enteredPassword);
-            
-            if (branchInfo && branchPassword == enteredPassword) {
-                errorMessage.style.display = 'none';
-                loadingMessage.style.display = 'block';
-                
-                setTimeout(() => {
-                    currentBranch = selectedBranch;
-                    showDashboard();
-                    loadingMessage.style.display = 'none';
-                }, 500);
+
+            console.log('🔐 التحقق من الباسورد:', {
+                المدخل: enteredPassword,
+                المخزن: branchPassword,
+                المساواة: branchPassword == enteredPassword
+            });
+
+            if (branchPassword == enteredPassword) {
+                currentBranch = selectedBranch;
+                loadBranchData();
+                showDashboard();
+                hideMessage(loginLoading);
             } else {
-                errorMessage.textContent = '❌ كلمة المرور غير صحيحة!';
-                errorMessage.style.display = 'block';
+                hideMessage(loginLoading);
+                showMessage(errorMessage, '❌ كلمة المرور غير صحيحة!');
                 passwordInput.value = '';
             }
         }
 
-        function showDashboard() {
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'block';
-            
-            // تصفية البيانات حسب الفرع
-            // نبحث عن العمود الذي يحتوي على اسم الفرع
+        // تحميل بيانات الفرع
+        function loadBranchData() {
             currentBranchData = branchesData.filter(row => {
                 for (let key in row) {
-                    const cleanKey = key.trim();
-                    // البحث عن أي عمود يحتوي على اسم الفرع
-                    if ((cleanKey === 'الفرع الحالى للعميل' || 
-                         cleanKey === 'الفرع' || 
-                         cleanKey === 'BRANCH' || 
-                         cleanKey === 'branch' ||
-                         cleanKey.includes('فرع') ||
-                         cleanKey.includes('BRANCH')) && 
+                    const cleanKey = key.toUpperCase();
+                    if ((cleanKey.includes('BRANCH') || cleanKey.includes('الفرع') || cleanKey.includes('فرع')) && 
                         row[key] === currentBranch) {
                         return true;
                     }
                 }
                 return false;
             });
-            
-            console.log('📊 بيانات الفرع الحالي:', currentBranchData.length, 'سجل');
-            
+
             filteredData = [...currentBranchData];
+            console.log('📊 بيانات الفرع الحالي:', currentBranchData);
+        }
+
+        // إظهار لوحة التحكم
+        function showDashboard() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
             
             document.getElementById('dashboardTitle').textContent = `لوحة تحكم ${currentBranch}`;
+            
             createTable();
-            setupFilters();
             updateStats();
         }
 
+        // إنشاء الجدول
         function createTable() {
             if (currentBranchData.length === 0) {
                 const tableBody = document.getElementById('tableBody');
@@ -596,7 +699,7 @@
             });
             tableHeader.appendChild(headerRow);
 
-            // تحديث قائمة الأعمدة
+            // تحديث قائمة الأعمدة للبحث
             const columnSelect = document.getElementById('columnSelect');
             columnSelect.innerHTML = '<option value="">اختر عمود للبحث</option>';
             columns.forEach(col => {
@@ -609,6 +712,7 @@
             renderTable();
         }
 
+        // عرض البيانات في الجدول
         function renderTable() {
             const tableBody = document.getElementById('tableBody');
             tableBody.innerHTML = '';
@@ -638,31 +742,26 @@
             updateStats();
         }
 
-        function setupFilters() {
-            const globalSearch = document.getElementById('globalSearch');
-            const fromDate = document.getElementById('fromDate');
-            const toDate = document.getElementById('toDate');
+        // تفعيل/تعطيل البحث في العمود المحدد
+        function toggleColumnSearch() {
             const columnSelect = document.getElementById('columnSelect');
             const columnSearch = document.getElementById('columnSearch');
-
-            columnSelect.addEventListener('change', function() {
-                columnSearch.disabled = !this.value;
-                if (!this.value) columnSearch.value = '';
-            });
-
-            [globalSearch, fromDate, toDate, columnSearch].forEach(element => {
-                element.addEventListener('input', applyFilters);
-            });
-
-            columnSelect.addEventListener('change', applyFilters);
+            
+            columnSearch.disabled = !columnSelect.value;
+            if (!columnSelect.value) {
+                columnSearch.value = '';
+            }
+            applyFilters();
         }
 
+        // تطبيق الفلاتر
         function applyFilters() {
             const globalSearch = document.getElementById('globalSearch').value.toLowerCase();
             const columnSelect = document.getElementById('columnSelect').value;
             const columnSearch = document.getElementById('columnSearch').value.toLowerCase();
 
             filteredData = currentBranchData.filter(item => {
+                // البحث العام
                 if (globalSearch) {
                     const found = Object.values(item).some(value => 
                         String(value).toLowerCase().includes(globalSearch)
@@ -670,6 +769,7 @@
                     if (!found) return false;
                 }
 
+                // البحث في عمود محدد
                 if (columnSelect && columnSearch) {
                     const columnValue = String(item[columnSelect] || '').toLowerCase();
                     if (!columnValue.includes(columnSearch)) return false;
@@ -681,6 +781,82 @@
             renderTable();
         }
 
+        // تطبيق فلتر التاريخ
+        function applyDateFilter() {
+            const fromDate = document.getElementById('transDateFrom').value;
+            const toDate = document.getElementById('transDateTo').value;
+
+            console.log('📅 تطبيق فلتر التاريخ:', { fromDate, toDate });
+
+            if (!fromDate && !toDate) {
+                applyFilters();
+                return;
+            }
+
+            filteredData = currentBranchData.filter(item => {
+                let transDate = null;
+                
+                // البحث عن حقل التاريخ
+                for (let key in item) {
+                    const cleanKey = key.toUpperCase();
+                    if (cleanKey.includes('DATE') || cleanKey.includes('التاريخ') || cleanKey.includes('تاريخ')) {
+                        transDate = item[key];
+                        break;
+                    }
+                }
+
+                if (!transDate) return true;
+
+                // تحويل التاريخ لصيغة YYYY-MM-DD للمقارنة
+                const itemDate = formatDateForComparison(transDate);
+                if (!itemDate) return true;
+
+                let fromCondition = true;
+                let toCondition = true;
+
+                if (fromDate) {
+                    fromCondition = itemDate >= fromDate;
+                }
+
+                if (toDate) {
+                    toCondition = itemDate <= toDate;
+                }
+
+                return fromCondition && toCondition;
+            });
+
+            renderTable();
+        }
+
+        // تحويل التاريخ لصيغة قابلة للمقارنة
+        function formatDateForComparison(dateString) {
+            if (!dateString) return '';
+            
+            // إذا التاريخ بالفعل بصيغة YYYY-MM-DD
+            if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+                return dateString;
+            }
+            
+            // إذا التاريخ بصيغة أخرى
+            if (typeof dateString === 'string') {
+                // تحويل من DD/MM/YYYY أو DD-MM-YYYY إلى YYYY-MM-DD
+                const parts = dateString.split(/[/\-.]/);
+                if (parts.length === 3) {
+                    // إذا اليوم أول جزء (نمط عربي/أوروبي)
+                    if (parts[0].length === 2 && parts[2].length === 4) {
+                        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                    // إذا السنة أول جزء (نمط ISO)
+                    if (parts[0].length === 4 && parts[2].length === 2) {
+                        return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                    }
+                }
+            }
+            
+            return '';
+        }
+
+        // إعادة تعيين الفلاتر
         function resetFilters() {
             document.getElementById('globalSearch').value = '';
             document.getElementById('columnSelect').value = '';
@@ -689,55 +865,24 @@
             resetDateFilter();
         }
 
-        function downloadExcel() {
-            try {
-                if (filteredData.length === 0) {
-                    alert('❌ لا توجد بيانات للتنزيل!');
-                    return;
-                }
-
-                console.log('📥 جاري تنزيل البيانات...');
-                console.log('   عدد الصفوف:', filteredData.length);
-
-                // تحويل البيانات إلى array للـ XLSX
-                const dataToExport = filteredData.map(item => {
-                    const row = {};
-                    Object.keys(item).forEach(key => {
-                        row[key] = item[key];
-                    });
-                    return row;
-                });
-
-                // إنشاء workbook
-                const ws = XLSX.utils.json_to_sheet(dataToExport);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, currentBranch);
-
-                // تنسيق الأعمدة
-                ws['!cols'] = Object.keys(dataToExport[0]).map(() => ({ wch: 20 }));
-
-                // تنزيل الملف
-                const fileName = `${currentBranch}_${new Date().toISOString().split('T')[0]}.xlsx`;
-                XLSX.writeFile(wb, fileName);
-
-                console.log('✅ تم تنزيل الملف:', fileName);
-                alert('✅ تم تنزيل الملف بنجاح!');
-            } catch (error) {
-                console.error('❌ خطأ في التنزيل:', error);
-                alert('❌ خطأ في التنزيل: ' + error.message);
-            }
+        // إعادة تعيين فلتر التاريخ
+        function resetDateFilter() {
+            document.getElementById('transDateFrom').value = '';
+            document.getElementById('transDateTo').value = '';
+            applyFilters();
         }
 
+        // تحديث الإحصائيات
         function updateStats() {
-            document.getElementById('totalRecords').textContent = currentBranchData.length;
-            document.getElementById('filteredRecords').textContent = filteredData.length;
+            document.getElementById('totalRecords').textContent = currentBranchData.length.toLocaleString();
+            document.getElementById('filteredRecords').textContent = filteredData.length.toLocaleString();
             
-            // حساب مجموع PAID_AMOUNT
+            // حساب مجموع المبالغ
             let totalAmount = 0;
             filteredData.forEach(item => {
                 for (let key in item) {
-                    const cleanKey = key.trim().toUpperCase();
-                    if (cleanKey === 'PAID_AMOUNT' || cleanKey.includes('مبلغ')) {
+                    const cleanKey = key.toUpperCase();
+                    if (cleanKey.includes('AMOUNT') || cleanKey.includes('المبلغ') || cleanKey.includes('مبلغ')) {
                         const value = parseFloat(item[key]) || 0;
                         totalAmount += value;
                         break;
@@ -751,6 +896,40 @@
             });
         }
 
+        // تنزيل Excel
+        function downloadExcel() {
+            try {
+                if (filteredData.length === 0) {
+                    alert('❌ لا توجد بيانات للتنزيل!');
+                    return;
+                }
+
+                // تحويل البيانات
+                const dataToExport = filteredData.map(item => {
+                    const row = {};
+                    Object.keys(item).forEach(key => {
+                        row[key] = item[key];
+                    });
+                    return row;
+                });
+
+                // إنشاء workbook
+                const ws = XLSX.utils.json_to_sheet(dataToExport);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, currentBranch);
+
+                // تنزيل الملف
+                const fileName = `${currentBranch}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                XLSX.writeFile(wb, fileName);
+
+                alert('✅ تم تنزيل الملف بنجاح!');
+            } catch (error) {
+                console.error('❌ خطأ في التنزيل:', error);
+                alert('❌ خطأ في التنزيل: ' + error.message);
+            }
+        }
+
+        // تسجيل الخروج
         function logout() {
             currentBranch = '';
             currentBranchData = [];
@@ -764,6 +943,16 @@
             document.getElementById('errorMessage').style.display = 'none';
             
             resetFilters();
+        }
+
+        // دوال مساعدة للرسائل
+        function showMessage(element, text) {
+            element.innerHTML = text;
+            element.style.display = 'block';
+        }
+
+        function hideMessage(element) {
+            element.style.display = 'none';
         }
     </script>
 </body>
