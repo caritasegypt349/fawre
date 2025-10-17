@@ -6,6 +6,7 @@
     <title>نظام إدارة الفروع</title>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <style>
+        /* نفس الـ CSS السابق - مش هتغيره */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -360,19 +361,25 @@
 
         async function loadData() {
             try {
+                console.log('بدء تحميل البيانات...');
+                
                 // تحميل بيانات الباسوردات
                 const passwordsResponse = await fetch('pass.xlsx');
                 const passwordsBuffer = await passwordsResponse.arrayBuffer();
                 const passwordsWorkbook = XLSX.read(passwordsBuffer);
-                const passwordsSheet = passwordsWorkbook.Sheets[passwordsWorkbook.SheetNames[0]];
+                const passwordsSheetName = passwordsWorkbook.SheetNames[0];
+                const passwordsSheet = passwordsWorkbook.Sheets[passwordsSheetName];
                 passwordsData = XLSX.utils.sheet_to_json(passwordsSheet);
+                console.log('بيانات الباسوردات:', passwordsData);
 
                 // تحميل بيانات الفروع
                 const branchesResponse = await fetch('new-uplode.xlsx');
                 const branchesBuffer = await branchesResponse.arrayBuffer();
                 const branchesWorkbook = XLSX.read(branchesBuffer);
-                const branchesSheet = branchesWorkbook.Sheets[branchesWorkbook.SheetNames[0]];
+                const branchesSheetName = branchesWorkbook.SheetNames[0];
+                const branchesSheet = branchesWorkbook.Sheets[branchesSheetName];
                 branchesData = XLSX.utils.sheet_to_json(branchesSheet);
+                console.log('بيانات الفروع:', branchesData);
 
                 console.log('تم تحميل البيانات بنجاح');
             } catch (error) {
@@ -385,12 +392,20 @@
             const branchSelect = document.getElementById('branchSelect');
             branchSelect.innerHTML = '<option value="">-- اختر الفرع --</option>';
             
-            passwordsData.forEach(branch => {
-                const option = document.createElement('option');
-                option.value = branch.BRANCH_NAME;
-                option.textContent = `${branch.BRANCH_CODE} - ${branch.BRANCH_NAME}`;
-                branchSelect.appendChild(option);
-            });
+            console.log('بيانات الباسوردات للعرض:', passwordsData);
+            
+            if (passwordsData && passwordsData.length > 0) {
+                passwordsData.forEach(branch => {
+                    console.log('فرع:', branch);
+                    const option = document.createElement('option');
+                    option.value = branch.BRANCH_NAME;
+                    option.textContent = `${branch.BRANCH_CODE} - ${branch.BRANCH_NAME}`;
+                    branchSelect.appendChild(option);
+                });
+            } else {
+                console.error('لا توجد بيانات باسوردات');
+                branchSelect.innerHTML = '<option value="">لا توجد فروع متاحة</option>';
+            }
         }
 
         function login() {
@@ -410,6 +425,8 @@
 
             // البحث عن الفرع والتحقق من الباسورد
             const branchInfo = passwordsData.find(b => b.BRANCH_NAME === selectedBranch);
+            console.log('بيانات الفرع المختار:', branchInfo);
+            console.log('الباسورد المدخل:', enteredPassword);
             
             if (branchInfo && branchInfo.PASSWORD == enteredPassword) {
                 errorMessage.style.display = 'none';
@@ -436,6 +453,8 @@
                 row['الفرع الحالى للعميل'] === currentBranch
             );
             
+            console.log('بيانات الفرع الحالي:', currentBranchData);
+            
             filteredData = [...currentBranchData];
             
             // تحديث العنوان
@@ -452,7 +471,10 @@
         }
 
         function createTable() {
-            if (currentBranchData.length === 0) return;
+            if (currentBranchData.length === 0) {
+                console.log('لا توجد بيانات للفرع الحالي');
+                return;
+            }
 
             const tableHeader = document.getElementById('tableHeader');
             const tableBody = document.getElementById('tableBody');
@@ -463,6 +485,7 @@
 
             // الحصول على أسماء الأعمدة
             const columns = Object.keys(currentBranchData[0]);
+            console.log('أعمدة البيانات:', columns);
 
             // إنشاء رأس الجدول
             const headerRow = document.createElement('tr');
@@ -555,14 +578,14 @@
                 }
 
                 // فلترة التاريخ
-                if (fromDate) {
-                    const itemDate = new Date(item.TRANS_DATE || '');
+                if (fromDate && item.TRANS_DATE) {
+                    const itemDate = new Date(item.TRANS_DATE);
                     const from = new Date(fromDate);
                     if (itemDate < from) return false;
                 }
 
-                if (toDate) {
-                    const itemDate = new Date(item.TRANS_DATE || '');
+                if (toDate && item.TRANS_DATE) {
+                    const itemDate = new Date(item.TRANS_DATE);
                     const to = new Date(toDate);
                     if (itemDate > to) return false;
                 }
