@@ -324,6 +324,10 @@
                         <label>إلى تاريخ:</label>
                         <input type="date" id="toDate">
                     </div>
+                    <div class="filter-group">
+                        <label>&nbsp;</label>
+                        <button class="btn" onclick="applyDateFilter()" style="background: #28a745;">🔍 تطبيق التاريخ</button>
+                    </div>
                 </div>
                 <div class="filter-row">
                     <div class="filter-group">
@@ -339,6 +343,13 @@
                     <div class="filter-group">
                         <button class="btn reset-btn" onclick="resetFilters()">إعادة تعيين الفلاتر</button>
                     </div>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalAmount">0</div>
+                    <div class="stat-label">مجموع المبالغ المدفوعة</div>
                 </div>
             </div>
 
@@ -658,6 +669,8 @@
 
         function resetFilters() {
             document.getElementById('globalSearch').value = '';
+            document.getElementById('fromDate').value = '';
+            document.getElementById('toDate').value = '';
             document.getElementById('columnSelect').value = '';
             document.getElementById('columnSearch').value = '';
             document.getElementById('columnSearch').disabled = true;
@@ -669,6 +682,24 @@
         function updateStats() {
             document.getElementById('totalRecords').textContent = currentBranchData.length;
             document.getElementById('filteredRecords').textContent = filteredData.length;
+            
+            // حساب مجموع PAID_AMOUNT
+            let totalAmount = 0;
+            filteredData.forEach(item => {
+                for (let key in item) {
+                    const cleanKey = key.trim().toUpperCase();
+                    if (cleanKey === 'PAID_AMOUNT' || cleanKey.includes('مبلغ')) {
+                        const value = parseFloat(item[key]) || 0;
+                        totalAmount += value;
+                        break;
+                    }
+                }
+            });
+            
+            document.getElementById('totalAmount').textContent = totalAmount.toLocaleString('ar-EG', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            });
         }
 
         function logout() {
