@@ -4,12 +4,267 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نظام إدارة الفروع</title>
-    <link rel="stylesheet" href="styles/style.css">
-    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .login-section, .dashboard {
+            padding: 30px;
+        }
+
+        .login-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+        }
+
+        .login-form {
+            width: 100%;
+            max-width: 400px;
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #764ba2;
+        }
+
+        .error {
+            margin-top: 15px;
+            padding: 12px;
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .loading {
+            margin-top: 15px;
+            padding: 12px;
+            background: #cce5ff;
+            color: #004085;
+            border: 1px solid #b8daff;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .dashboard {
+            display: none;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+
+        .dashboard-header h2 {
+            color: #333;
+        }
+
+        .logout-btn {
+            padding: 10px 20px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .logout-btn:hover {
+            background: #c82333;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            opacity: 0.9;
+        }
+
+        .filters {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .filter-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.95em;
+        }
+
+        .reset-btn {
+            width: 100%;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        thead {
+            background: #f8f9fa;
+        }
+
+        th {
+            padding: 15px;
+            text-align: right;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <!-- قسم تسجيل الدخول -->
         <div class="header">
             <h1>🏢 نظام إدارة الفروع</h1>
             <p>اختر الفرع وأدخل كلمة المرور للوصول إلى البيانات</p>
@@ -31,17 +286,13 @@
 
                 <button class="btn" onclick="login()">دخول</button>
                 
-                <div class="error" id="errorMessage">
-                    كلمة المرور غير صحيحة!
-                </div>
-
+                <div class="error" id="errorMessage"></div>
                 <div class="loading" id="loadingMessage" style="display: none;">
                     جاري تحميل البيانات...
                 </div>
             </div>
         </div>
 
-        <!-- قسم عرض البيانات -->
         <div class="dashboard" id="dashboard">
             <div class="dashboard-header">
                 <h2 id="dashboardTitle">لوحة تحكم الفرع</h2>
@@ -76,14 +327,6 @@
                 </div>
                 <div class="filter-row">
                     <div class="filter-group">
-                        <label>نوع الفاتورة:</label>
-                        <select id="billTypeFilter">
-                            <option value="">جميع الأنواع</option>
-                            <option value="75146">75146</option>
-                            <option value="90074">90074</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
                         <label>عمود محدد:</label>
                         <select id="columnSelect">
                             <option value="">اختر عمود للبحث</option>
@@ -93,9 +336,9 @@
                         <label>قيمة البحث:</label>
                         <input type="text" id="columnSearch" placeholder="قيمة البحث..." disabled>
                     </div>
-                </div>
-                <div class="filter-row">
-                    <button class="btn reset-btn" onclick="resetFilters()">إعادة تعيين الفلاتر</button>
+                    <div class="filter-group">
+                        <button class="btn reset-btn" onclick="resetFilters()">إعادة تعيين الفلاتر</button>
+                    </div>
                 </div>
             </div>
 
@@ -103,11 +346,9 @@
                 <table id="dataTable">
                     <thead id="tableHeader">
                         <tr>
-                            <!-- سيتم ملؤها ديناميكياً -->
                         </tr>
                     </thead>
                     <tbody id="tableBody">
-                        <!-- سيتم ملؤها ديناميكياً -->
                     </tbody>
                 </table>
             </div>
@@ -115,14 +356,13 @@
     </div>
 
     <script>
-        // نفس الكود JavaScript السابق
-        let branchesData = [];
         let passwordsData = [];
+        let branchesData = [];
         let currentBranchData = [];
         let filteredData = [];
         let currentBranch = '';
 
-        // تحميل البيانات عند فتح الصفحة
+        // تحميل البيانات من JSON عند فتح الصفحة
         window.addEventListener('DOMContentLoaded', async function() {
             await loadData();
             populateBranchSelect();
@@ -130,86 +370,76 @@
 
         async function loadData() {
             try {
-                console.log('بدء تحميل البيانات...');
+                console.log('🔄 جاري تحميل البيانات...');
                 
-                // تحميل بيانات الباسوردات
-                const passwordsResponse = await fetch('pass.xlsx');
-                const passwordsBuffer = await passwordsResponse.arrayBuffer();
-                const passwordsWorkbook = XLSX.read(passwordsBuffer);
-                const passwordsSheetName = passwordsWorkbook.SheetNames[0];
-                const passwordsSheet = passwordsWorkbook.Sheets[passwordsSheetName];
+                // المسارات المحتملة
+                const paths = ['data/passwords.json', './data/passwords.json', '../data/passwords.json'];
+                let passwordsPath = null;
+                let branchesPath = null;
                 
-                // قراءة البيانات مع الاحتفاظ بالرؤوس كما هي
-                passwordsData = XLSX.utils.sheet_to_json(passwordsSheet, { header: 1 });
-                
-                // تحويل البيانات إلى objects
-                if (passwordsData.length > 0) {
-                    const headers = passwordsData[0];
-                    passwordsData = passwordsData.slice(1).map(row => {
-                        let obj = {};
-                        headers.forEach((header, index) => {
-                            obj[header] = row[index];
-                        });
-                        return obj;
-                    });
+                // البحث عن المسار الصحيح للباسوردات
+                for (let path of paths) {
+                    try {
+                        const response = await fetch(path);
+                        if (response.ok) {
+                            passwordsPath = path;
+                            break;
+                        }
+                    } catch (e) {}
                 }
                 
-                console.log('بيانات الباسوردات بعد المعالجة:', passwordsData);
-
-                // تحميل بيانات الفروع
-                const branchesResponse = await fetch('new-uplode.xlsx');
-                const branchesBuffer = await branchesResponse.arrayBuffer();
-                const branchesWorkbook = XLSX.read(branchesBuffer);
-                const branchesSheetName = branchesWorkbook.SheetNames[0];
-                const branchesSheet = branchesWorkbook.Sheets[branchesSheetName];
-                
-                // قراءة البيانات مع الاحتفاظ بالرؤوس كما هي
-                branchesData = XLSX.utils.sheet_to_json(branchesSheet, { header: 1 });
-                
-                // تحويل البيانات إلى objects
-                if (branchesData.length > 0) {
-                    const headers = branchesData[0];
-                    branchesData = branchesData.slice(1).map(row => {
-                        let obj = {};
-                        headers.forEach((header, index) => {
-                            obj[header] = row[index];
-                        });
-                        return obj;
-                    });
+                // البحث عن المسار الصحيح للفروع
+                for (let path of paths) {
+                    const branchPath = path.replace('passwords.json', 'branches.json');
+                    try {
+                        const response = await fetch(branchPath);
+                        if (response.ok) {
+                            branchesPath = branchPath;
+                            break;
+                        }
+                    } catch (e) {}
                 }
                 
-                console.log('بيانات الفروع بعد المعالجة:', branchesData);
-
-                console.log('تم تحميل البيانات بنجاح');
+                if (!passwordsPath) {
+                    console.error('❌ لم يتم العثور على passwords.json');
+                    throw new Error('لم يتم العثور على ملف passwords.json في المسارات: data/passwords.json');
+                }
+                
+                if (!branchesPath) {
+                    console.error('❌ لم يتم العثور على branches.json');
+                    throw new Error('لم يتم العثور على ملف branches.json في المسارات: data/branches.json');
+                }
+                
+                // تحميل البيانات
+                const passwordsResponse = await fetch(passwordsPath);
+                passwordsData = await passwordsResponse.json();
+                console.log('✅ تم تحميل بيانات الباسوردات:', passwordsData.length, 'من', passwordsPath);
+                
+                const branchesResponse = await fetch(branchesPath);
+                branchesData = await branchesResponse.json();
+                console.log('✅ تم تحميل بيانات الفروع:', branchesData.length, 'من', branchesPath);
+                
             } catch (error) {
-                console.error('خطأ في تحميل البيانات:', error);
-                alert('حدث خطأ في تحميل البيانات. يرجى التأكد من وجود الملفات.');
+                console.error('❌ خطأ:', error);
+                console.log('📁 تأكد من أن الهيكل كالتالي:');
+                console.log('   - index.html');
+                console.log('   - data/');
+                console.log('     - passwords.json');
+                console.log('     - branches.json');
+                alert('❌ خطأ في تحميل البيانات:\n' + error.message);
             }
         }
 
         function populateBranchSelect() {
-            const branchSelect = document.getElementById('branchSelect');
-            branchSelect.innerHTML = '<option value="">-- اختر الفرع --</option>';
+            const select = document.getElementById('branchSelect');
+            const branches = [...new Set(passwordsData.map(p => Object.values(p)[0]))];
             
-            console.log('بيانات الباسوردات للعرض:', passwordsData);
-            
-            if (passwordsData && passwordsData.length > 0) {
-                passwordsData.forEach(branch => {
-                    console.log('فرع:', branch);
-                    const branchName = branch['BRANCH_NAME'] || branch['branch_name'] || branch['اسم الفرع'];
-                    const branchCode = branch['BRANCH_CODE'] || branch['branch_code'] || branch['كود الفرع'];
-                    
-                    if (branchName && branchCode) {
-                        const option = document.createElement('option');
-                        option.value = branchName;
-                        option.textContent = `${branchCode} - ${branchName}`;
-                        branchSelect.appendChild(option);
-                    }
-                });
-            } else {
-                console.error('لا توجد بيانات باسوردات');
-                branchSelect.innerHTML = '<option value="">لا توجد فروع متاحة</option>';
-            }
+            branches.forEach(branch => {
+                const option = document.createElement('option');
+                option.value = branch;
+                option.textContent = branch;
+                select.appendChild(option);
+            });
         }
 
         function login() {
@@ -222,21 +452,14 @@
             const enteredPassword = passwordInput.value;
 
             if (!selectedBranch || !enteredPassword) {
-                errorMessage.textContent = 'يرجى اختيار الفرع وإدخال كلمة المرور';
+                errorMessage.textContent = '❌ يرجى اختيار الفرع وإدخال كلمة المرور';
                 errorMessage.style.display = 'block';
                 return;
             }
 
             // البحث عن الفرع والتحقق من الباسورد
-            const branchInfo = passwordsData.find(b => {
-                const branchName = b['BRANCH_NAME'] || b['branch_name'] || b['اسم الفرع'];
-                return branchName === selectedBranch;
-            });
-            
-            console.log('بيانات الفرع المختار:', branchInfo);
-            console.log('الباسورد المدخل:', enteredPassword);
-            
-            const branchPassword = branchInfo ? (branchInfo['PASSWORD'] || branchInfo['password'] || branchInfo['كلمة المرور']) : null;
+            const branchInfo = passwordsData.find(b => Object.values(b)[0] === selectedBranch);
+            const branchPassword = branchInfo ? Object.values(branchInfo)[1] : null;
             
             if (branchInfo && branchPassword == enteredPassword) {
                 errorMessage.style.display = 'none';
@@ -246,9 +469,9 @@
                     currentBranch = selectedBranch;
                     showDashboard();
                     loadingMessage.style.display = 'none';
-                }, 1000);
+                }, 500);
             } else {
-                errorMessage.textContent = 'كلمة المرور غير صحيحة!';
+                errorMessage.textContent = '❌ كلمة المرور غير صحيحة!';
                 errorMessage.style.display = 'block';
                 passwordInput.value = '';
             }
@@ -258,32 +481,20 @@
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
             
-            // تصفية بيانات الفرع الحالي - بحث في عدة أعمدة محتملة
-            currentBranchData = branchesData.filter(row => {
-                const branchField = row['الفرع الحالى للعميل'] || row['الفرع'] || row['BRANCH'] || row['branch'];
-                return branchField === currentBranch;
-            });
-            
-            console.log('بيانات الفرع الحالي:', currentBranchData);
+            // تصفية البيانات حسب الفرع
+            const branchColumn = Object.keys(branchesData[0])[0];
+            currentBranchData = branchesData.filter(row => row[branchColumn] === currentBranch);
             
             filteredData = [...currentBranchData];
             
-            // تحديث العنوان
             document.getElementById('dashboardTitle').textContent = `لوحة تحكم ${currentBranch}`;
-            
-            // تحديث الإحصائيات
-            updateStats();
-            
-            // إنشاء الجدول
             createTable();
-            
-            // إعداد الفلاتر
             setupFilters();
+            updateStats();
         }
 
         function createTable() {
             if (currentBranchData.length === 0) {
-                console.log('لا توجد بيانات للفرع الحالي');
                 const tableBody = document.getElementById('tableBody');
                 tableBody.innerHTML = '<tr><td colspan="20" style="text-align: center; padding: 20px;">لا توجد بيانات للفرع المحدد</td></tr>';
                 return;
@@ -292,15 +503,11 @@
             const tableHeader = document.getElementById('tableHeader');
             const tableBody = document.getElementById('tableBody');
 
-            // مسح المحتوى القديم
             tableHeader.innerHTML = '';
             tableBody.innerHTML = '';
 
-            // الحصول على أسماء الأعمدة
             const columns = Object.keys(currentBranchData[0]);
-            console.log('أعمدة البيانات:', columns);
-
-            // إنشاء رأس الجدول
+            
             const headerRow = document.createElement('tr');
             columns.forEach(col => {
                 const th = document.createElement('th');
@@ -309,7 +516,7 @@
             });
             tableHeader.appendChild(headerRow);
 
-            // تحديث قائمة الأعمدة للبحث
+            // تحديث قائمة الأعمدة
             const columnSelect = document.getElementById('columnSelect');
             columnSelect.innerHTML = '<option value="">اختر عمود للبحث</option>';
             columns.forEach(col => {
@@ -355,18 +562,15 @@
             const globalSearch = document.getElementById('globalSearch');
             const fromDate = document.getElementById('fromDate');
             const toDate = document.getElementById('toDate');
-            const billTypeFilter = document.getElementById('billTypeFilter');
             const columnSelect = document.getElementById('columnSelect');
             const columnSearch = document.getElementById('columnSearch');
 
-            // تمكين/تعطيل حقل البحث حسب العمود
             columnSelect.addEventListener('change', function() {
                 columnSearch.disabled = !this.value;
                 if (!this.value) columnSearch.value = '';
             });
 
-            // إضافة مستمعين للأحداث
-            [globalSearch, fromDate, toDate, billTypeFilter, columnSearch].forEach(element => {
+            [globalSearch, fromDate, toDate, columnSearch].forEach(element => {
                 element.addEventListener('input', applyFilters);
             });
 
@@ -375,14 +579,10 @@
 
         function applyFilters() {
             const globalSearch = document.getElementById('globalSearch').value.toLowerCase();
-            const fromDate = document.getElementById('fromDate').value;
-            const toDate = document.getElementById('toDate').value;
-            const billTypeFilter = document.getElementById('billTypeFilter').value;
             const columnSelect = document.getElementById('columnSelect').value;
             const columnSearch = document.getElementById('columnSearch').value.toLowerCase();
 
             filteredData = currentBranchData.filter(item => {
-                // البحث العام
                 if (globalSearch) {
                     const found = Object.values(item).some(value => 
                         String(value).toLowerCase().includes(globalSearch)
@@ -390,25 +590,6 @@
                     if (!found) return false;
                 }
 
-                // فلترة التاريخ
-                if (fromDate && item.TRANS_DATE) {
-                    const itemDate = new Date(item.TRANS_DATE);
-                    const from = new Date(fromDate);
-                    if (itemDate < from) return false;
-                }
-
-                if (toDate && item.TRANS_DATE) {
-                    const itemDate = new Date(item.TRANS_DATE);
-                    const to = new Date(toDate);
-                    if (itemDate > to) return false;
-                }
-
-                // فلترة BILL_TYPE_CODE
-                if (billTypeFilter && item.BILL_TYPE_CODE != billTypeFilter) {
-                    return false;
-                }
-
-                // فلترة حسب عمود محدد
                 if (columnSelect && columnSearch) {
                     const columnValue = String(item[columnSelect] || '').toLowerCase();
                     if (!columnValue.includes(columnSearch)) return false;
@@ -422,9 +603,6 @@
 
         function resetFilters() {
             document.getElementById('globalSearch').value = '';
-            document.getElementById('fromDate').value = '';
-            document.getElementById('toDate').value = '';
-            document.getElementById('billTypeFilter').value = '';
             document.getElementById('columnSelect').value = '';
             document.getElementById('columnSearch').value = '';
             document.getElementById('columnSearch').disabled = true;
@@ -446,7 +624,6 @@
             document.getElementById('dashboard').style.display = 'none';
             document.getElementById('loginSection').style.display = 'block';
             
-            // مسح الحقول
             document.getElementById('branchSelect').value = '';
             document.getElementById('passwordInput').value = '';
             document.getElementById('errorMessage').style.display = 'none';
